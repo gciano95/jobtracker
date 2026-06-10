@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f14;--bg2:#16161e;--bg3:#1e1e2a;
+  --glass:rgba(255,255,255,0.055);--gb:rgba(255,255,255,0.11);--gh:rgba(255,255,255,0.09);
+  --text:#f0f0f5;--muted:rgba(240,240,245,0.42);--sub:rgba(240,240,245,0.63);
+  --accent:#7b8df7;--accent2:#a78bfa;
+  --green:#34d399;--yellow:#fbbf24;--red:#f87171;--orange:#fb923c;--blue:#60a5fa;--purple:#c084fc;
+  --sidebar:220px;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+body::before{content:'';position:fixed;top:-200px;left:-200px;width:700px;height:700px;background:radial-gradient(circle,rgba(123,141,247,0.09) 0%,transparent 70%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-150px;right:-150px;width:500px;height:500px;background:radial-gradient(circle,rgba(167,139,250,0.07) 0%,transparent 70%);pointer-events:none;z-index:0}
+@keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.4}
+a{text-decoration:none;color:var(--accent)}a:hover{text-decoration:underline}
+select option{background:#1a1a24}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--gb)}
+td{padding:10px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;font-size:13px}
+tr:last-child td{border-bottom:none}
+input,select,textarea{font-family:inherit}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--gb);display:flex;flex-direction:column;padding:24px 14px;position:fixed;top:0;left:0;height:100vh;z-index:50;gap:4px}
+.sidebar-logo{font-size:17px;font-weight:700;letter-spacing:-.4px;margin-bottom:22px;padding:0 6px}
+.sidebar-logo span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;color:var(--sub);transition:all .15s;border:none;background:transparent;font-family:inherit;width:100%;text-align:left}
+.nav-item:hover{background:var(--glass);color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(123,141,247,0.18),rgba(167,139,250,0.12));color:var(--accent2);border:1px solid rgba(123,141,247,0.2)}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:0 6px;font-size:11px;color:var(--muted)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar);flex:1;position:relative;z-index:1;min-height:100vh}
+.page{display:none;padding:28px 28px 60px}
+.page.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-header h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:12px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s,transform .15s;white-space:nowrap}
+.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white}
+.btn-glass{background:var(--glass);border:1px solid var(--gb)!important;color:var(--sub)}
+.btn-glass:hover{background:var(--gh);color:var(--text)}
+.btn-danger{background:linear-gradient(135deg,#f87171,#ef4444);color:white}
+.btn-icon{background:var(--glass);border:1px solid var(--gb);color:var(--muted);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:all .15s}
+.btn-icon:hover{background:var(--gh);color:var(--text)}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:12px;margin-bottom:22px}
+.stat-card{background:var(--glass);border:1px solid var(--gb);border-radius:10px;padding:14px 16px;text-align:center}
+.stat-card .num{font-size:24px;font-weight:700;line-height:1}
+.stat-card .lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── FILTERS ── */
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.filter-btn{background:var(--glass);border:1px solid var(--gb);color:var(--sub);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.filter-btn.active{background:var(--gh);border-color:var(--accent);color:var(--text)}
+.search-input{background:var(--glass);border:1px solid var(--gb);color:var(--text);padding:6px 14px;border-radius:20px;font-size:13px;outline:none;min-width:160px;margin-left:auto;font-family:inherit}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--muted)}
+
+/* ── VIEW TOGGLE ── */
+.view-toggle{display:flex;gap:3px;background:var(--glass);border:1px solid var(--gb);border-radius:10px;padding:3px}
+.view-btn{padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;border:none;font-family:inherit;color:var(--muted);background:transparent;transition:all .15s}
+.view-btn.active{background:var(--gh);color:var(--text)}
+
+/* ── CARD/TABLE WRAP ── */
+.card{background:var(--glass);border:1px solid var(--gb);border-radius:16px;padding:20px}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* ── KANBAN ── */
+.kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.kanban-col{background:var(--glass);border:1px solid var(--gb);border-radius:16px;padding:14px}
+.kanban-col-head{display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.kanban-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.kanban-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sub)}
+.kanban-count{margin-left:auto;background:var(--gh);border-radius:8px;padding:1px 7px;font-size:11px;color:var(--muted)}
+.kanban-card{background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 11px;margin-bottom:7px;cursor:pointer;transition:background .15s,transform .15s}
+.kanban-card:hover{background:rgba(255,255,255,0.07);transform:translateY(-1px)}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(10px);z-index:200;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:#1a1a24;border:1px solid var(--gb);border-radius:18px;padding:26px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.5);animation:slideUp .2s ease}
+.modal-sm{max-width:380px}
+.modal h2{font-size:17px;font-weight:700;margin-bottom:18px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.form-full{grid-column:1/-1}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:11px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.3px}
+.fi{background:var(--glass);border:1px solid var(--gb);color:var(--text);padding:8px 11px;border-radius:9px;font-size:13px;font-family:inherit;outline:none;width:100%;transition:border-color .2s}
+.fi:focus{border-color:var(--accent)}
+.fi::placeholder{color:var(--muted)}
+.fi-ta{resize:vertical;min-height:65px}
+.star-row{display:flex;gap:7px}
+.star{font-size:22px;cursor:pointer;opacity:.2;transition:opacity .15s}
+.star.on{opacity:1}
+
+/* ── DETAIL ── */
+.detail-row{display:flex;gap:8px;margin-bottom:6px;font-size:13px}
+.dk{color:var(--muted);min-width:120px;flex-shrink:0}
+.notes-box{background:var(--glass);border:1px solid var(--gb);border-radius:9px;padding:11px;font-size:13px;color:var(--sub);line-height:1.5;white-space:pre-wrap}
+
+/* ── PHASE TIMELINE ── */
+.phase-wrap{margin-bottom:16px}
+.phase-track{display:flex;margin-top:8px}
+.phase-step{flex:1;position:relative}
+.phase-step::after{content:'';position:absolute;top:7px;left:50%;width:100%;height:2px;background:var(--gb)}
+.phase-step:last-child::after{display:none}
+.phase-node{width:16px;height:16px;border-radius:50%;border:2px solid var(--gb);background:var(--bg2);margin:0 auto;position:relative;z-index:1}
+.phase-node.done{background:var(--accent);border-color:var(--accent)}
+.phase-node.current{background:var(--accent2);border-color:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+.phase-name{font-size:9px;color:var(--muted);text-align:center;margin-top:4px;line-height:1.2}
+
+/* ── LOG COLLOQUI ── */
+.log-entry{background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:13px 15px;margin-bottom:8px;position:relative}
+.log-entry-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.log-tipo{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.log-date{font-size:11px;color:var(--muted)}
+.log-interl{font-size:12px;color:var(--sub);margin-bottom:4px}
+.log-notes{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}
+.log-actions{position:absolute;top:11px;right:11px;display:flex;gap:5px}
+.log-empty{text-align:center;padding:24px;color:var(--muted);font-size:13px}
+
+/* ── CALENDARIO ── */
+.cal-nav{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.cal-month{font-size:16px;font-weight:700}
+.cal-nav-btn{background:var(--glass);border:1px solid var(--gb);color:var(--sub);padding:5px 12px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:14px;transition:all .15s}
+.cal-nav-btn:hover{background:var(--gh);color:var(--text)}
+
+/* grid */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px}
+.cal-day-name{text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 0}
+.cal-cell{background:var(--glass);border:1px solid var(--gb);border-radius:9px;min-height:72px;padding:7px;cursor:default;transition:background .15s}
+.cal-cell.has-event{cursor:pointer}
+.cal-cell.has-event:hover{background:var(--gh)}
+.cal-cell.today{border-color:var(--accent);background:rgba(123,141,247,0.07)}
+.cal-cell.other-month .cal-cell-num{color:var(--muted);opacity:.4}
+.cal-cell-num{font-size:12px;font-weight:600;margin-bottom:4px}
+.cal-pill{font-size:9px;font-weight:600;padding:2px 6px;border-radius:6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-pill:hover{opacity:.8}
+
+/* agenda */
+.agenda-group{margin-bottom:20px}
+.agenda-date-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.agenda-date-label::after{content:'';flex:1;height:1px;background:rgba(123,141,247,0.2)}
+.agenda-item{background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer;transition:background .15s}
+.agenda-item:hover{background:var(--gh)}
+.agenda-item-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.agenda-company{font-size:13px;font-weight:600}
+.agenda-role{font-size:11px;color:var(--muted)}
+.agenda-time{font-size:11px;color:var(--muted);margin-left:auto}
+.no-events{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:34px;margin-bottom:10px}
+
+@media(max-width:760px){
+  :root{--sidebar:0px}
+  .sidebar{transform:translateX(-100%);transition:transform .25s}
+  .sidebar.open{transform:translateX(0);width:220px}
+  .main{margin-left:0}
+  .mobile-menu-btn{display:flex!important}
+  .form-grid{grid-template-columns:1fr}
+  .cal-pill{display:none}
+  .cal-cell{min-height:44px}
+}
+.mobile-menu-btn{display:none;background:var(--glass);border:1px solid var(--gb);border-radius:9px;padding:7px 11px;cursor:pointer;font-size:16px;color:var(--text);font-family:inherit}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">Job <span>Tracker</span></div>
+  <button class="nav-item active" id="nav-candidature" onclick="goTo('candidature')">
+    <span class="nav-icon">📋</span> Candidature
+  </button>
+  <button class="nav-item" id="nav-calendario" onclick="goTo('calendario')">
+    <span class="nav-icon">📅</span> Calendario
+  </button>
+  <div class="sidebar-footer">v3.0 · localStorage</div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ══ PAGE: CANDIDATURE ══ -->
+  <div class="page active" id="page-candidature">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+        <div>
+          <h2>Candidature</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Gestisci le tue candidature attive</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="view-toggle">
+          <button class="view-btn active" id="btnTable" onclick="setView('table')">☰ Lista</button>
+          <button class="view-btn" id="btnKanban" onclick="setView('kanban')">⊞ Kanban</button>
+        </div>
+        <button class="btn btn-primary" onclick="openAdd()">＋ Aggiungi</button>
+      </div>
+    </div>
+
+    <div class="stats" id="statsRow"></div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">Tutte</button>
+      <button class="filter-btn" onclick="setFilter('0',this)">📤 Inviata</button>
+      <button class="filter-btn" onclick="setFilter('1',this)">📞 Screening</button>
+      <button class="filter-btn" onclick="setFilter('2',this)">🧑‍💻 Tecnico</button>
+      <button class="filter-btn" onclick="setFilter('3',this)">👔 Finale</button>
+      <button class="filter-btn" onclick="setFilter('4',this)">✅ Offerta</button>
+      <button class="filter-btn" onclick="setFilter('5',this)">❌ Rifiutato</button>
+      <input class="search-input" id="searchInput" placeholder="🔍  Cerca…" oninput="renderCandidature()">
+    </div>
+
+    <div id="tableView"><div class="card" id="tableBody"></div></div>
+    <div id="kanbanView" style="display:none"><div class="kanban" id="kanbanBoard"></div></div>
+  </div>
+
+  <!-- ══ PAGE: CALENDARIO ══ -->
+  <div class="page" id="page-calendario">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+        <div>
+          <h2>Calendario Colloqui</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Tutti i colloqui fissati</p>
+        </div>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnCalMese" onclick="setCalView('mese')">📅 Mese</button>
+        <button class="view-btn" id="btnCalAgenda" onclick="setCalView('agenda')">☰ Agenda</button>
+      </div>
+    </div>
+    <div id="calMeseView"></div>
+    <div id="calAgendaView" style="display:none"></div>
+  </div>
+
+</main>
+
+<!-- ══ MODALS ══ -->
+
+<!-- ADD/EDIT CANDIDATURA -->
+<div class="overlay" id="addModal">
+  <div class="modal">
+    <h2 id="addTitle">Nuova candidatura</h2>
+    <div class="form-grid">
+      <div class="fg"><label class="fl">Azienda *</label><input class="fi" id="f_company" placeholder="es. Enel S.p.A."></div>
+      <div class="fg"><label class="fl">Ruolo *</label><input class="fi" id="f_role" placeholder="es. Digital Lead"></div>
+      <div class="fg"><label class="fl">Link annuncio</label><input class="fi" id="f_link" placeholder="https://..."></div>
+      <div class="fg"><label class="fl">Sito aziendale</label><input class="fi" id="f_website" placeholder="https://..."></div>
+      <div class="fg"><label class="fl">Data candidatura</label><input class="fi" id="f_date" type="date"></div>
+      <div class="fg"><label class="fl">Scadenza annuncio</label><input class="fi" id="f_deadline" type="date"></div>
+      <div class="fg"><label class="fl">Contatto HR</label><input class="fi" id="f_contact" placeholder="Nome, email o LinkedIn"></div>
+      <div class="fg"><label class="fl">Status</label>
+        <select class="fi" id="f_status">
+          <option value="0">📤 Candidatura inviata</option>
+          <option value="1">📞 Screening HR</option>
+          <option value="2">🧑‍💻 Colloquio tecnico</option>
+          <option value="3">👔 Colloquio finale</option>
+          <option value="4">✅ Offerta ricevuta</option>
+          <option value="5">❌ Rifiutato / No risposta</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label class="fl">Interesse personale</label>
+        <div class="star-row" id="starRow">
+          <span class="star" data-v="1" onclick="setStar(1)">⭐</span>
+          <span class="star" data-v="2" onclick="setStar(2)">⭐</span>
+          <span class="star" data-v="3" onclick="setStar(3)">⭐</span>
+          <span class="star" data-v="4" onclick="setStar(4)">⭐</span>
+          <span class="star" data-v="5" onclick="setStar(5)">⭐</span>
+        </div>
+      </div>
+      <div class="fg form-full"><label class="fl">Documenti usati</label><input class="fi" id="f_docs" placeholder="CV_v3.pdf, CL_Enel.pdf"></div>
+      <div class="fg form-full"><label class="fl">Note</label><textarea class="fi fi-ta" id="f_notes" placeholder="Appunti, feedback, prossimi step..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-glass" onclick="closeModal('addModal')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveEntry()">💾 Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL CANDIDATURA -->
+<div class="overlay" id="detailModal">
+  <div class="modal" style="max-width:600px" id="detailContent"></div>
+</div>
+
+<!-- ADD/EDIT LOG EVENTO -->
+<div class="overlay" id="logModal">
+  <div class="modal">
+    <h2 id="logTitle">Aggiungi evento</h2>
+    <div class="form-grid">
+      <div class="fg"><label class="fl">Data *</label><input class="fi" id="l_date" type="date"></div>
+      <div class="fg"><label class="fl">Ora</label><input class="fi" id="l_time" type="time" placeholder="es. 14:30"></div>
+      <div class="fg"><label class="fl">Tipo *</label>
+        <select class="fi" id="l_tipo">
+          <option value="Screening HR">📞 Screening HR</option>
+          <option value="Colloquio tecnico">🧑‍💻 Colloquio tecnico</option>
+          <option value="Colloquio con manager">👔 Colloquio con manager</option>
+          <option value="Colloquio finale">🎯 Colloquio finale</option>
+          <option value="HR / Offerta">✅ HR / Offerta</option>
+          <option value="Altro">📌 Altro</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Durata (min)</label><input class="fi" id="l_durata" type="number" placeholder="es. 45" min="0"></div>
+      <div class="fg form-full"><label class="fl">Nome interlocutore</label><input class="fi" id="l_interl" placeholder="es. Mario Rossi – HR Manager"></div>
+      <div class="fg form-full"><label class="fl">Esito</label>
+        <select class="fi" id="l_esito">
+          <option value="">— Da definire —</option>
+          <option value="Positivo">✅ Positivo</option>
+          <option value="In attesa">⏳ In attesa di feedback</option>
+          <option value="Negativo">❌ Negativo</option>
+          <option value="Fissato">📅 Fissato (prossimo step)</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label class="fl">Note</label><textarea class="fi fi-ta" id="l_notes" placeholder="Argomenti trattati, impressioni, domande ricevute..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-glass" onclick="closeModal('logModal')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveLog()">💾 Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL EVENTO (dal calendario) -->
+<div class="overlay" id="calDetailModal">
+  <div class="modal modal-sm" id="calDetailContent"></div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="overlay" id="confirmModal">
+  <div class="modal modal-sm">
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">Conferma eliminazione</div>
+    <div style="font-size:13px;color:var(--sub);margin-bottom:20px" id="confirmMsg">Eliminare questo elemento?</div>
+    <div class="modal-footer">
+      <button class="btn btn-glass" onclick="closeModal('confirmModal')">Annulla</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">🗑 Elimina</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+const SK_E = 'jt-entries-v3';
+const SK_L = 'jt-logs-v3';
+
+const STATUSES = [
+  {label:'Candidatura inviata',dot:'#60a5fa',bg:'rgba(96,165,250,0.15)',  color:'#60a5fa'},
+  {label:'Screening HR',       dot:'#fbbf24',bg:'rgba(251,191,36,0.15)',  color:'#fbbf24'},
+  {label:'Colloquio tecnico',  dot:'#c084fc',bg:'rgba(192,132,252,0.15)', color:'#c084fc'},
+  {label:'Colloquio finale',   dot:'#fb923c',bg:'rgba(251,146,60,0.15)',  color:'#fb923c'},
+  {label:'Offerta ricevuta',   dot:'#34d399',bg:'rgba(52,211,153,0.15)',  color:'#34d399'},
+  {label:'Rifiutato',          dot:'#f87171',bg:'rgba(248,113,113,0.15)', color:'#f87171'},
+];
+const STAT_COLORS=['#60a5fa','#fbbf24','#c084fc','#fb923c','#34d399','#f87171'];
+const STAT_LABELS=['Inviate','Screening','Tecnico','Finale','Offerte','Rifiutate'];
+const P_LABELS=['Inviata','Screening','Tecnico','Finale','Offerta'];
+
+const TIPO_META = {
+  'Screening HR':          {icon:'📞', color:'#fbbf24', bg:'rgba(251,191,36,0.12)'},
+  'Colloquio tecnico':     {icon:'🧑‍💻',color:'#c084fc', bg:'rgba(192,132,252,0.12)'},
+  'Colloquio con manager': {icon:'👔', color:'#fb923c', bg:'rgba(251,146,60,0.12)'},
+  'Colloquio finale':      {icon:'🎯', color:'#a78bfa', bg:'rgba(167,139,250,0.12)'},
+  'HR / Offerta':          {icon:'✅', color:'#34d399', bg:'rgba(52,211,153,0.12)'},
+  'Altro':                 {icon:'📌', color:'#60a5fa', bg:'rgba(96,165,250,0.12)'},
+};
+const ESITO_META = {
+  'Positivo':  {icon:'✅', color:'#34d399'},
+  'In attesa': {icon:'⏳', color:'#fbbf24'},
+  'Negativo':  {icon:'❌', color:'#f87171'},
+  'Fissato':   {icon:'📅', color:'#60a5fa'},
+};
+
+const DEMO_E = [
+  {id:1,company:'Enel S.p.A.',role:'ICT Digital Solutions Specialist',link:'https://www.enel.com/careers',website:'https://www.enel.com',date:'2026-05-20',deadline:'2026-06-30',contact:'Laura Ricci — l.ricci@enel.com',status:2,stars:5,docs:'CV_Giulio_Enel_v2.pdf',notes:'Focus su digital transformation e background bancario.'},
+  {id:2,company:'Plenitude (Eni)',role:'Senior Digital PM',link:'https://www.plenitude.com/careers',website:'https://www.plenitude.com',date:'2026-05-28',deadline:'',contact:'',status:1,stars:3,docs:'CV_Giulio_v3.pdf',notes:'Gap analysis: ruolo focalizzato su digital marketing.'},
+  {id:3,company:'Accenture',role:'Manager – Financial Services',link:'',website:'https://www.accenture.com',date:'2026-04-10',deadline:'',contact:'Marco Bianchi (LinkedIn)',status:5,stars:2,docs:'CV_Giulio_v2.pdf',notes:'Rifiutato dopo primo screening HR.'},
+];
+const DEMO_L = [
+  {id:101,entryId:1,date:'2026-06-12',time:'10:00',tipo:'Colloquio tecnico',durata:60,interl:'Laura Ricci – HR + Marco Verdi – ICT Lead',esito:'Positivo',notes:'Domande su DORA, core banking migration Intesa. Impressione positiva. Prossimo step: colloquio con manager.'},
+  {id:102,entryId:1,date:'2026-06-24',time:'15:30',tipo:'Colloquio con manager',durata:45,interl:'Andrea Bianchi – Head of Digital',esito:'Fissato',notes:'Colloquio fissato. Preparare case study su migrazione core banking.'},
+  {id:103,entryId:2,date:'2026-06-10',time:'09:00',tipo:'Screening HR',durata:30,interl:'Sofia Mori – Talent Acquisition',esito:'In attesa',notes:'Primo contatto telefonico. Buona impressione. In attesa di feedback.'},
+];
+
+let entries = JSON.parse(localStorage.getItem(SK_E)||'null') || DEMO_E;
+let logs    = JSON.parse(localStorage.getItem(SK_L)||'null') || DEMO_L;
+
+function saveData() {
+  localStorage.setItem(SK_E, JSON.stringify(entries));
+  localStorage.setItem(SK_L, JSON.stringify(logs));
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════ */
+let currentPage = 'candidature';
+
+function goTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+  if (page==='candidature') renderCandidature();
+  if (page==='calendario')  renderCalendario();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+let currentView = 'table';
+let currentFilter = 'all';
+let editingId = null;
+let editingLogId = null;
+let currentLogEntryId = null;
+let currentStars = 3;
+let pendingDeleteCb = null;
+let calView = 'mese';
+let calYear, calMonth;
+
+const now = new Date();
+calYear  = now.getFullYear();
+calMonth = now.getMonth();
+
+function fmtDate(d) { if(!d)return'—'; const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`; }
+function isExpiring(d){ if(!d)return false; const diff=(new Date(d)-new Date())/86400000; return diff>=0&&diff<=7; }
+function starsHtml(n){ return Array.from({length:5},(_,i)=>`<span style="opacity:${i<n?1:0.18}">⭐</span>`).join(''); }
+
+function badge(status){
+  const s=STATUSES[status];
+  return `<span class="badge" style="background:${s.bg};color:${s.color}"><span class="badge-dot" style="background:${s.dot}"></span>${s.label}</span>`;
+}
+
+function tipoBadge(tipo){
+  const m=TIPO_META[tipo]||TIPO_META['Altro'];
+  return `<span class="log-tipo" style="background:${m.bg};color:${m.color}">${m.icon} ${tipo}</span>`;
+}
+
+function esitoBadge(esito){
+  if(!esito) return '';
+  const m=ESITO_META[esito];
+  if(!m) return '';
+  return `<span style="font-size:11px;font-weight:600;color:${m.color}">${m.icon} ${esito}</span>`;
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openOverlay(id){ document.getElementById(id).classList.add('open'); }
+
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+function askDelete(msg, cb){
+  document.getElementById('confirmMsg').textContent = msg;
+  pendingDeleteCb = cb;
+  openOverlay('confirmModal');
+}
+function confirmDelete(){ if(pendingDeleteCb) pendingDeleteCb(); closeModal('confirmModal'); }
+
+/* ═══════════════════════════════════════════
+   CANDIDATURE – RENDER
+═══════════════════════════════════════════ */
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  return entries.filter(e=>{
+    const mf=currentFilter==='all'||e.status==currentFilter;
+    const ms=!q||e.company.toLowerCase().includes(q)||e.role.toLowerCase().includes(q);
+    return mf&&ms;
+  });
+}
+
+function renderStats(){
+  const counts=[0,0,0,0,0,0];
+  entries.forEach(e=>counts[e.status]++);
+  document.getElementById('statsRow').innerHTML=
+    STAT_LABELS.map((l,i)=>`<div class="stat-card"><div class="num" style="color:${STAT_COLORS[i]}">${counts[i]}</div><div class="lbl">${l}</div></div>`).join('')+
+    `<div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Totale</div></div>`;
+}
+
+function renderTable(){
+  const data=getFiltered();
+  if(!data.length){ document.getElementById('tableBody').innerHTML='<div class="empty"><div class="empty-icon">🗂️</div><p>Nessuna candidatura trovata.</p></div>'; return; }
+  document.getElementById('tableBody').innerHTML=`<table>
+    <thead><tr><th>Azienda / Ruolo</th><th>Status</th><th>Data</th><th>Scadenza</th><th>Interesse</th><th>Link</th><th></th></tr></thead>
+    <tbody>${data.map(e=>{
+      const logCount=logs.filter(l=>l.entryId===e.id).length;
+      const sc=e.deadline&&isExpiring(e.deadline)?'#fb923c':'var(--sub)';
+      return`<tr>
+        <td><div style="font-weight:600">${e.company}</div><div style="color:var(--sub);font-size:12px">${e.role}</div>
+          ${logCount>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px">📋 ${logCount} evento${logCount>1?'i':''}</div>`:''}</td>
+        <td>${badge(e.status)}</td>
+        <td style="color:var(--sub);font-size:12px">${fmtDate(e.date)}</td>
+        <td style="font-size:12px;color:${sc}">${fmtDate(e.deadline)}</td>
+        <td style="font-size:12px">${starsHtml(e.stars)}</td>
+        <td>${e.link?`<a href="${e.link}" target="_blank" style="font-size:12px">Annuncio ↗</a>`:'—'}</td>
+        <td><div style="display:flex;gap:5px">
+          <button class="btn-icon" title="Dettaglio" onclick="openDetail(${e.id})">👁</button>
+          <button class="btn-icon" title="Modifica"  onclick="openEdit(${e.id})">✏️</button>
+          <button class="btn-icon" title="Elimina"   onclick="askDelete('Eliminare la candidatura per ${e.company.replace(/'/g,"\\'")}?',()=>{deleteEntry(${e.id})})">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderKanban(){
+  const data=getFiltered();
+  document.getElementById('kanbanBoard').innerHTML=STATUSES.map((s,i)=>{
+    const cols=data.filter(e=>e.status===i);
+    return`<div class="kanban-col">
+      <div class="kanban-col-head"><div class="kanban-dot" style="background:${s.dot}"></div><span class="kanban-title">${s.label}</span><span class="kanban-count">${cols.length}</span></div>
+      ${cols.length===0?'<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">—</div>':
+        cols.map(e=>`<div class="kanban-card" onclick="openDetail(${e.id})">
+          <div style="font-weight:600;font-size:13px">${e.company}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.role}</div>
+          <div style="font-size:10px;margin-top:4px">${starsHtml(e.stars)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${fmtDate(e.date)}</div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderCandidature(){
+  renderStats();
+  if(currentView==='table') renderTable(); else renderKanban();
+}
+
+function setView(v){
+  currentView=v;
+  document.getElementById('tableView').style.display=v==='table'?'':'none';
+  document.getElementById('kanbanView').style.display=v==='kanban'?'':'none';
+  document.getElementById('btnTable').classList.toggle('active',v==='table');
+  document.getElementById('btnKanban').classList.toggle('active',v==='kanban');
+  renderCandidature();
+}
+
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCandidature();
+}
+
+/* ═══════════════════════════════════════════
+   CANDIDATURE – ADD / EDIT / DELETE
+═══════════════════════════════════════════ */
+function setStar(n){ currentStars=n; document.querySelectorAll('.star').forEach(s=>s.classList.toggle('on',parseInt(s.dataset.v)<=n)); }
+
+function resetForm(){
+  ['f_company','f_role','f_link','f_website','f_contact','f_docs','f_notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f_deadline').value='';
+  document.getElementById('f_status').value='0';
+  setStar(3);
+}
+
+function openAdd(){ editingId=null; document.getElementById('addTitle').textContent='Nuova candidatura'; resetForm(); openOverlay('addModal'); }
+
+function openEdit(id){
+  const e=entries.find(x=>x.id===id);
+  editingId=id;
+  document.getElementById('addTitle').textContent='Modifica candidatura';
+  document.getElementById('f_company').value=e.company;
+  document.getElementById('f_role').value=e.role;
+  document.getElementById('f_link').value=e.link;
+  document.getElementById('f_website').value=e.website;
+  document.getElementById('f_date').value=e.date;
+  document.getElementById('f_deadline').value=e.deadline;
+  document.getElementById('f_contact').value=e.contact;
+  document.getElementById('f_status').value=e.status;
+  document.getElementById('f_docs').value=e.docs;
+  document.getElementById('f_notes').value=e.notes;
+  setStar(e.stars);
+  closeModal('detailModal');
+  openOverlay('addModal');
+}
+
+function saveEntry(){
+  const company=document.getElementById('f_company').value.trim();
+  const role=document.getElementById('f_role').value.trim();
+  if(!company||!role){ alert('Inserisci almeno azienda e ruolo.'); return; }
+  const obj={
+    id:editingId||Date.now(),company,role,
+    link:document.getElementById('f_link').value.trim(),
+    website:document.getElementById('f_website').value.trim(),
+    date:document.getElementById('f_date').value,
+    deadline:document.getElementById('f_deadline').value,
+    contact:document.getElementById('f_contact').value.trim(),
+    status:parseInt(document.getElementById('f_status').value),
+    stars:currentStars||3,
+    docs:document.getElementById('f_docs').value.trim(),
+    notes:document.getElementById('f_notes').value.trim(),
+  };
+  if(editingId){ const i=entries.findIndex(e=>e.id===editingId); entries[i]=obj; }
+  else entries.push(obj);
+  saveData(); closeModal('addModal'); renderCandidature();
+}
+
+function deleteEntry(id){
+  entries=entries.filter(e=>e.id!==id);
+  logs=logs.filter(l=>l.entryId!==id);
+  saveData(); closeModal('detailModal'); renderCandidature();
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL CANDIDATURA + LOG
+═══════════════════════════════════════════ */
+function openDetail(id){
+  const e=entries.find(x=>x.id===id);
+  const entryLogs=logs.filter(l=>l.entryId===id).sort((a,b)=>b.date.localeCompare(a.date));
+
+  let phaseHtml='';
+  if(e.status<5){
+    phaseHtml=`<div class="phase-wrap">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Avanzamento processo</div>
+      <div class="phase-track">
+        ${P_LABELS.map((l,i)=>`<div class="phase-step"><div class="phase-node ${i<e.status?'done':i===e.status?'current':''}"></div><div class="phase-name">${l}</div></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  const logHtml=entryLogs.length===0
+    ? '<div class="log-empty">Nessun evento registrato.<br>Aggiungi il primo colloquio!</div>'
+    : entryLogs.map(l=>{
+        const tm=TIPO_META[l.tipo]||TIPO_META['Altro'];
+        return`<div class="log-entry">
+          <div class="log-actions">
+            <button class="btn-icon" title="Modifica" onclick="openEditLog(${l.id},${e.id})">✏️</button>
+            <button class="btn-icon" title="Elimina"  onclick="askDelete('Eliminare questo evento?',()=>{deleteLog(${l.id})})">🗑</button>
+          </div>
+          <div class="log-entry-header">
+            ${tipoBadge(l.tipo)}
+            <span class="log-date">📅 ${fmtDate(l.date)}${l.time?' · ⏰ '+l.time:''}</span>
+            ${l.durata?`<span class="log-date">⏱ ${l.durata} min</span>`:''}
+            ${l.esito?esitoBadge(l.esito):''}
+          </div>
+          ${l.interl?`<div class="log-interl">👤 ${l.interl}</div>`:''}
+          ${l.notes?`<div class="log-notes">${l.notes}</div>`:''}
+        </div>`;
+      }).join('');
+
+  document.getElementById('detailContent').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-size:19px;font-weight:700">${e.company}</div><div style="color:var(--sub);font-size:13px;margin-top:2px">${e.role}</div></div>
+      ${badge(e.status)}
+    </div>
+    ${phaseHtml}
+    <div class="detail-row"><span class="dk">Data candidatura</span><span>${fmtDate(e.date)}</span></div>
+    <div class="detail-row"><span class="dk">Scadenza</span><span>${fmtDate(e.deadline)}</span></div>
+    <div class="detail-row"><span class="dk">Contatto HR</span><span>${e.contact||'—'}</span></div>
+    <div class="detail-row"><span class="dk">Interesse</span><span>${starsHtml(e.stars)}</span></div>
+    <div class="detail-row"><span class="dk">Annuncio</span><span>${e.link?`<a href="${e.link}" target="_blank">Apri ↗</a>`:'—'}</span></div>
+    <div class="detail-row"><span class="dk">Sito aziendale</span><span>${e.website?`<a href="${e.website}" target="_blank">Apri ↗</a>`:'—'}</span></div>
+    <div class="detail-row"><span class="dk">Documenti</span><span>${e.docs||'—'}</span></div>
+    ${e.notes?`<div style="margin-top:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Note generali</div><div class="notes-box">${e.notes}</div></div>`:''}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">
+      <div style="font-size:13px;font-weight:700">📋 Log colloqui</div>
+      <button class="btn btn-primary" style="padding:6px 13px;font-size:12px" onclick="openAddLog(${e.id})">＋ Aggiungi evento</button>
+    </div>
+    <div id="logList">${logHtml}</div>
+
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-glass" onclick="closeModal('detailModal')">Chiudi</button>
+      <button class="btn btn-primary" onclick="openEdit(${e.id})">✏️ Modifica</button>
+    </div>`;
+  openOverlay('detailModal');
+}
+
+function refreshLogList(entryId){
+  const el=document.getElementById('logList');
+  if(!el) return;
+  const entryLogs=logs.filter(l=>l.entryId===entryId).sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML=entryLogs.length===0
+    ?'<div class="log-empty">Nessun evento registrato.</div>'
+    :entryLogs.map(l=>{
+        return`<div class="log-entry">
+          <div class="log-actions">
+            <button class="btn-icon" title="Modifica" onclick="openEditLog(${l.id},${entryId})">✏️</button>
+            <button class="btn-icon" title="Elimina" onclick="askDelete('Eliminare questo evento?',()=>{deleteLog(${l.id})})">🗑</button>
+          </div>
+          <div class="log-entry-header">
+            ${tipoBadge(l.tipo)}
+            <span class="log-date">📅 ${fmtDate(l.date)}${l.time?' · ⏰ '+l.time:''}</span>
+            ${l.durata?`<span class="log-date">⏱ ${l.durata} min</span>`:''}
+            ${l.esito?esitoBadge(l.esito):''}
+          </div>
+          ${l.interl?`<div class="log-interl">👤 ${l.interl}</div>`:''}
+          ${l.notes?`<div class="log-notes">${l.notes}</div>`:''}
+        </div>`;
+      }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   LOG – ADD / EDIT / DELETE
+═══════════════════════════════════════════ */
+function openAddLog(entryId){
+  currentLogEntryId=entryId;
+  editingLogId=null;
+  document.getElementById('logTitle').textContent='Aggiungi evento';
+  ['l_interl','l_notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('l_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('l_time').value='';
+  document.getElementById('l_tipo').value='Screening HR';
+  document.getElementById('l_durata').value='';
+  document.getElementById('l_esito').value='';
+  openOverlay('logModal');
+}
+
+function openEditLog(logId, entryId){
+  const l=logs.find(x=>x.id===logId);
+  currentLogEntryId=entryId;
+  editingLogId=logId;
+  document.getElementById('logTitle').textContent='Modifica evento';
+  document.getElementById('l_date').value=l.date;
+  document.getElementById('l_time').value=l.time||'';
+  document.getElementById('l_tipo').value=l.tipo;
+  document.getElementById('l_durata').value=l.durata||'';
+  document.getElementById('l_interl').value=l.interl||'';
+  document.getElementById('l_esito').value=l.esito||'';
+  document.getElementById('l_notes').value=l.notes||'';
+  openOverlay('logModal');
+}
+
+function saveLog(){
+  const date=document.getElementById('l_date').value;
+  const tipo=document.getElementById('l_tipo').value;
+  if(!date||!tipo){ alert('Data e tipo sono obbligatori.'); return; }
+  const obj={
+    id:editingLogId||Date.now(),
+    entryId:currentLogEntryId,
+    date, tipo,
+    time:document.getElementById('l_time').value,
+    durata:parseInt(document.getElementById('l_durata').value)||0,
+    interl:document.getElementById('l_interl').value.trim(),
+    esito:document.getElementById('l_esito').value,
+    notes:document.getElementById('l_notes').value.trim(),
+  };
+  if(editingLogId){ const i=logs.findIndex(l=>l.id===editingLogId); logs[i]=obj; }
+  else logs.push(obj);
+  saveData();
+  closeModal('logModal');
+  refreshLogList(currentLogEntryId);
+  if(currentPage==='calendario') renderCalendario();
+}
+
+function deleteLog(logId){
+  const l=logs.find(x=>x.id===logId);
+  const eid=l?l.entryId:null;
+  logs=logs.filter(x=>x.id!==logId);
+  saveData();
+  if(eid) refreshLogList(eid);
+  if(currentPage==='calendario') renderCalendario();
+}
+
+/* ═══════════════════════════════════════════
+   CALENDARIO
+═══════════════════════════════════════════ */
+const MONTHS_IT=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const DAYS_IT=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+function setCalView(v){
+  calView=v;
+  document.getElementById('calMeseView').style.display=v==='mese'?'':'none';
+  document.getElementById('calAgendaView').style.display=v==='agenda'?'':'none';
+  document.getElementById('btnCalMese').classList.toggle('active',v==='mese');
+  document.getElementById('btnCalAgenda').classList.toggle('active',v==='agenda');
+  renderCalendario();
+}
+
+function renderCalendario(){
+  if(calView==='mese') renderCalMese(); else renderCalAgenda();
+}
+
+function logsForDate(dateStr){ return logs.filter(l=>l.date===dateStr); }
+
+function calPill(l){
+  const e=entries.find(x=>x.id===l.entryId);
+  const tm=TIPO_META[l.tipo]||TIPO_META['Altro'];
+  const label=e?e.company:'?';
+  return`<div class="cal-pill" style="background:${tm.bg};color:${tm.color}" onclick="event.stopPropagation();openCalDetail(${l.id})" title="${label} – ${l.tipo}">${tm.icon} ${label}</div>`;
+}
+
+function renderCalMese(){
+  const firstDay=new Date(calYear,calMonth,1);
+  const lastDay=new Date(calYear,calMonth+1,0);
+  const todayStr=new Date().toISOString().split('T')[0];
+
+  // day of week (Mon=0)
+  let startDow=(firstDay.getDay()+6)%7;
+
+  let html=`<div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+    <span class="cal-month">${MONTHS_IT[calMonth]} ${calYear}</span>
+    <button class="cal-nav-btn" onclick="calNext()">›</button>
+    <button class="cal-nav-btn" onclick="calToday()" style="margin-left:auto;font-size:12px">Oggi</button>
+  </div>
+  <div class="cal-grid">
+    ${DAYS_IT.map(d=>`<div class="cal-day-name">${d}</div>`).join('')}`;
+
+  // prev month padding
+  const prevLast=new Date(calYear,calMonth,0).getDate();
+  for(let i=startDow-1;i>=0;i--){
+    html+=`<div class="cal-cell other-month"><div class="cal-cell-num">${prevLast-i}</div></div>`;
+  }
+
+  // current month
+  for(let d=1;d<=lastDay.getDate();d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayLogs=logsForDate(ds);
+    const isToday=ds===todayStr;
+    const hasCls=dayLogs.length>0?'has-event':'';
+    html+=`<div class="cal-cell ${isToday?'today':''} ${hasCls}" ${dayLogs.length>0?`onclick="openDayModal('${ds}')"`:''}><div class="cal-cell-num" style="${isToday?'color:var(--accent);font-weight:700':''}">${d}</div>${dayLogs.slice(0,3).map(l=>calPill(l)).join('')}${dayLogs.length>3?`<div style="font-size:9px;color:var(--muted)">+${dayLogs.length-3} altri</div>`:''}</div>`;
+  }
+
+  // next month padding
+  const totalCells=Math.ceil((startDow+lastDay.getDate())/7)*7;
+  const nextPad=totalCells-(startDow+lastDay.getDate());
+  for(let i=1;i<=nextPad;i++){
+    html+=`<div class="cal-cell other-month"><div class="cal-cell-num">${i}</div></div>`;
+  }
+
+  html+='</div>';
+  document.getElementById('calMeseView').innerHTML=html;
+}
+
+function renderCalAgenda(){
+  const sorted=[...logs].sort((a,b)=>a.date.localeCompare(b.date));
+  const todayStr=new Date().toISOString().split('T')[0];
+  const future=sorted.filter(l=>l.date>=todayStr);
+  const past=sorted.filter(l=>l.date<todayStr);
+  const all=[...future,...past];
+
+  if(!all.length){
+    document.getElementById('calAgendaView').innerHTML='<div class="no-events">📅 Nessun colloquio registrato.<br>Aggiungili dal dettaglio di una candidatura.</div>';
+    return;
+  }
+
+  // group by date
+  const groups={};
+  all.forEach(l=>{ if(!groups[l.date])groups[l.date]=[]; groups[l.date].push(l); });
+
+  let html=`<div class="cal-nav">
+    <span class="cal-month">Tutti gli eventi</span>
+    <span style="font-size:12px;color:var(--muted);margin-left:8px">${all.length} colloqui totali</span>
+  </div>`;
+
+  Object.keys(groups).sort().forEach(ds=>{
+    const isPast=ds<todayStr;
+    html+=`<div class="agenda-group">
+      <div class="agenda-date-label" style="${isPast?'opacity:.5':''}">${fmtDate(ds)}${ds===todayStr?' · <span style="color:var(--accent)">Oggi</span>':''}</div>
+      ${groups[ds].map(l=>{
+        const e=entries.find(x=>x.id===l.entryId);
+        const tm=TIPO_META[l.tipo]||TIPO_META['Altro'];
+        return`<div class="agenda-item" onclick="openCalDetail(${l.id})" style="${isPast?'opacity:.6':''}">
+          <div class="agenda-item-top">
+            ${tipoBadge(l.tipo)}
+            ${l.esito?esitoBadge(l.esito):''}
+            ${l.time?`<span class="agenda-time">⏰ ${l.time}</span>`:''}
+          </div>
+          <div class="agenda-company">${e?e.company:'Azienda rimossa'}</div>
+          <div class="agenda-role">${e?e.role:''}</div>
+          ${l.interl?`<div style="font-size:11px;color:var(--muted);margin-top:3px">👤 ${l.interl}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  document.getElementById('calAgendaView').innerHTML=html;
+}
+
+function calPrev(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalMese(); }
+function calNext(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalMese(); }
+function calToday(){ const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth(); renderCalMese(); }
+
+function openDayModal(ds){
+  const dayLogs=logsForDate(ds);
+  if(!dayLogs.length) return;
+  if(dayLogs.length===1){ openCalDetail(dayLogs[0].id); return; }
+  // show list
+  const e0=entries.find(x=>x.id===dayLogs[0].entryId);
+  document.getElementById('calDetailContent').innerHTML=`
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px">📅 ${fmtDate(ds)}</div>
+    ${dayLogs.map(l=>{
+      const e=entries.find(x=>x.id===l.entryId);
+      return`<div class="agenda-item" onclick="closeModal('calDetailModal');openCalDetail(${l.id})">
+        <div class="agenda-item-top">${tipoBadge(l.tipo)}${l.time?`<span class="agenda-time">⏰ ${l.time}</span>`:''}</div>
+        <div class="agenda-company">${e?e.company:'?'}</div>
+        <div class="agenda-role">${e?e.role:''}</div>
+      </div>`;
+    }).join('')}
+    <div class="modal-footer"><button class="btn btn-glass" onclick="closeModal('calDetailModal')">Chiudi</button></div>`;
+  openOverlay('calDetailModal');
+}
+
+function openCalDetail(logId){
+  const l=logs.find(x=>x.id===logId);
+  if(!l) return;
+  const e=entries.find(x=>x.id===l.entryId);
+  const tm=TIPO_META[l.tipo]||TIPO_META['Altro'];
+  document.getElementById('calDetailContent').innerHTML=`
+    <div style="margin-bottom:16px">
+      ${tipoBadge(l.tipo)}
+      <div style="font-size:17px;font-weight:700;margin-top:10px">${e?e.company:'—'}</div>
+      <div style="font-size:13px;color:var(--sub)">${e?e.role:''}</div>
+    </div>
+    <div class="detail-row"><span class="dk">Data</span><span>${fmtDate(l.date)}${l.time?' · '+l.time:''}</span></div>
+    <div class="detail-row"><span class="dk">Durata</span><span>${l.durata?l.durata+' min':'—'}</span></div>
+    <div class="detail-row"><span class="dk">Interlocutore</span><span>${l.interl||'—'}</span></div>
+    <div class="detail-row"><span class="dk">Esito</span><span>${l.esito?esitoBadge(l.esito):'—'}</span></div>
+    ${l.notes?`<div style="margin-top:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Note</div><div class="notes-box">${l.notes}</div></div>`:''}
+    <div class="modal-footer">
+      <button class="btn btn-glass" onclick="closeModal('calDetailModal')">Chiudi</button>
+      ${e?`<button class="btn btn-primary" onclick="closeModal('calDetailModal');openDetail(${e.id})">Vai alla candidatura</button>`:''}
+    </div>`;
+  openOverlay('calDetailModal');
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+renderCandidature();
+</script>
+</body>
+</html>
